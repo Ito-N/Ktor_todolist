@@ -1,9 +1,11 @@
 package com.practice
 
-import com.practice.entities.ToDo
+import com.practice.repository.InMemoryToDoRepository
+import com.practice.repository.ToDoRepository
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.gson.*
+import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.request.*
 import io.ktor.routing.*
@@ -23,23 +25,36 @@ fun Application.module(testing: Boolean = false) {
 
     routing {
 
-        val todos = listOf<ToDo>(
-            ToDo(1, "Plan content for video #2", true),
-            ToDo(2, "Record video #2", true),
-            ToDo(3, "Upload video #2", true)
-        )
+        // 型変換(ここでは、派生クラス→基底クラスのアップキャスト)
+        val repository: ToDoRepository = InMemoryToDoRepository()
 
         get("/") {
             call.respondText("Hello World")
         }
 
         get("/todos") {
-            call.respond(todos)
+            call.respond(repository.getAllToDos())
         }
 
         get("/todos/{id}") {
-            val id = call.parameters["id"]
-            call.respondText("Todolist Details for Todo Item #$id")
+            val id = call.parameters["id"]?.toIntOrNull()
+
+            if (id == null) {
+                call.respond(HttpStatusCode.BadRequest,
+                "id prameter has to be a number"
+                )
+                return@get
+            }
+
+            val todo = repository.getToDo(id)
+
+            if (todo == null) {
+                call.respond(HttpStatusCode.NotFound,
+                "found no todo for the provided id $id"
+                )
+            } else {
+                call.respond(todo)
+            }
         }
     }
 }
