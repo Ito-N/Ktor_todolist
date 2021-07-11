@@ -1,5 +1,6 @@
 package com.practice
 
+import com.practice.entities.ToDoDraft
 import com.practice.repository.InMemoryToDoRepository
 import com.practice.repository.ToDoRepository
 import io.ktor.application.*
@@ -25,7 +26,7 @@ fun Application.module(testing: Boolean = false) {
 
     routing {
 
-        // 型変換(ここでは、派生クラス→基底クラスのアップキャスト)
+        // 変数名repository 型ToDoRepositoryインターフェース 値InMemoryToDoRepositoryのインスタンス
         val repository: ToDoRepository = InMemoryToDoRepository()
 
         get("/") {
@@ -54,6 +55,55 @@ fun Application.module(testing: Boolean = false) {
                 )
             } else {
                 call.respond(todo)
+            }
+        }
+
+        post("/todos") {
+            val todoDraft = call.receive<ToDoDraft>()
+            val todo = repository.addToDo(todoDraft)
+            call.respond(todo)
+        }
+
+        put("/todos/{id}") {
+            val toDoDraft = call.receive<ToDoDraft>()
+            val todoId = call.parameters["id"]?.toIntOrNull()
+
+            if (todoId == null) {
+                call.respond(HttpStatusCode.BadRequest,
+                "id parameter has to be a number"
+                )
+
+                return@put
+            }
+
+            val updated = repository.updateToDo(todoId, toDoDraft)
+            if (updated) {
+                call.respond(HttpStatusCode.OK)
+            } else {
+                call.respond(HttpStatusCode.NotFound,
+                "found no todo with the id $todoId"
+                )
+            }
+        }
+
+        delete("/todos/{id}") {
+            val todoId = call.parameters["id"]?.toIntOrNull()
+
+            if (todoId == null) {
+                call.respond(HttpStatusCode.BadRequest,
+                    "id parameter has to be a number"
+                )
+
+                return@delete
+            }
+
+            val removed = repository.removeToDo(todoId)
+            if (removed) {
+                call.respond(HttpStatusCode.OK)
+            } else {
+                call.respond(HttpStatusCode.NotFound,
+                    "found no todo with the id $todoId"
+                )
             }
         }
     }
